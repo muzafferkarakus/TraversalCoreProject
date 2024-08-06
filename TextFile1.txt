@@ -1,0 +1,96 @@
+N Katmanlý Mimari
+
+1- Entity Layer
+	Bu katmanda entityler kullanýlacak 
+		SQL deki Tablelar C# da Class olarak kullanýlýyor
+		SQL deki Columnlar C# da Property olarak kullanýlýyor
+
+2- Data Access Layer
+	Bu Katmanda Veritabaný CRUD iþlemleri için alt yapý hazýrlanacak
+		Repository Design Pattern kullanýlýr
+
+3- Business Layer
+	Bu katmanda Validasyonlarýn kontrolü yapýlýr
+
+4- Presentation Layer
+
+Abstract 
+
+CRUD iþlemler için Data Access Layer Katmanýnda IGenericDal adýnda bir Interface oluþturulur
+
+iþlemler buraya T parametresi ile tanýmlanýr diðer interfaceler IGenericDal dan kalýtým alýr.
+
+örnek : public interface IGuideDal:IGenericDal<Guide> 
+
+Entity Layerdaki tüm classlar için bu iþlemler yapýlacak
+
+
+Repository olarak 1 tane GenericRepositoy adýnda class oluþturulur
+
+veritabanýna kayýt iþlemleri buradan yapýlýr 
+ IGenericDal dan kalýtým alýnýr 
+
+ Örnek : public class GenericRepository<T> : IGenericDal<T> where T : class
+
+ daha sonra GenericRepository üzerinde CTRL + . yapýlarak implement interface denilir 
+
+ ve metotlar içerisine tanýmlamalar yapýlýr. 
+
+ Entity Framework için her entity için bir class tanýmlamasý yapýlýr Repository ve Abstract
+ klasörlerinden kalýtým alýnýr 
+
+ Örnek : public class EfAbout2Dal : GenericRepository<About2>, IAbout2Dal
+
+ Fluent Validation : Form girdilerinde karakter kontrolü ve boþ geçilemeyeceði kontrolünü yapar 
+
+ Business Layer ve UI Katmanlarýna package olarak kurulur Business Layer katmanýnda Validation Rules Klasörü altýna ilgili Entity Adýnda Class oluþturularak
+ istenilen kurallar yazýlýr RuleFor komutu ile yazýlýr. Class AbstractValidator den kalýtým alýr 
+ Örnek : public class AboutValidator:AbstractValidator<About>
+ Örnek2: RuleFor(x=>x.Description).NotEmpty().WithMessage("Açýklama kýsmýný boþ geçemezsiniz");
+
+
+ Identity Ýþlemleri için UI, DataAccesLayer ve EntityLayer Katmanlarýna önce aþaðýdaki 2 paket kurulmalý
+ Microsoft.Asp.NetCore.Identity 
+ Microsoft.Asp.NetCore.Identity.EntityFrameworkCore 
+
+ paketler kurulduktan sonra 
+ EntityLayer katmanýna AppUser adýnda yeni bir class oluþturulur. Bu class Identity Kütüphanesinden Miras alýr.
+ Örnek : public class AppUser:IdentityUser<int> 
+ daha sonra Asp.Net user tablosuna ilave edilecek alanlar girilir 
+ Örnek : Telefon No, Profil Fotoðrafý, Adý, Soyadý vb.
+
+ AppRole class ý eklenir bu class üzerinde yetkilendirme yapýlýr.Bu class Identity Kütüphanesinden Miras alýr.
+ Örnek : public class AppRole:IdentityRole<int> 
+
+ yukarýdaki tanýmlamar yapýldýktan sonra DataAccessLayer katmanýnda Context te identity miras alýnýr.
+
+ Örnek : public class Context : IdentityDbContext<AppUser,AppRole, int>
+
+ yukarýdaki adýmlar tamamlandýktan sonra Package Manager Console ekranýnda 
+
+ add-migration ve update-database komutlarý çalýþtýrýlýr.
+
+ Register iþlemi için Startup.cs Class'ýnda yapýlacaklar Aþaðýdaki Servis altýna kodlar yazýlýr.
+
+public void ConfigureServices(IServiceCollection services)
+   {
+      services.AddDbContext<Context>();
+      services.AddIdentity<AppUser,AppRole>().AddEntityFrameworkStores<Context>();
+      services.AddControllersWithViews();
+
+      services.AddMvc(config =>
+      {
+         var policy=new AuthorizationPolicyBuilder()
+         .RequireAuthenticatedUser()
+         .Build();
+         config.Filters.Add(new AuthorizeFilter(policy));
+      });
+
+      services.AddMvc();
+   }
+
+Authorization iþlemlerini tamamlamak için aþaðýdaki kodu 
+
+public void Configure(IApplicationBuilder app, IWebHostEnvironment env) içine yazmak gerekiyor.
+
+app.UseAuthentication();
